@@ -4,6 +4,8 @@ export default defineConfig({
   testMatch: '**/*.browser.js',
   fullyParallel: true,
   workers: 2,
+  forbidOnly: !!process.env.CI,
+  reporter: process.env.CI ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://127.0.0.1:4178',
     viewport: { width: 1440, height: 1000 },

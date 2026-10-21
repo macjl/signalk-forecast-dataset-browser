@@ -4,7 +4,8 @@ const path = require('node:path')
 const assert = require('node:assert/strict')
 const { execFileSync } = require('node:child_process')
 const { createHash, createHmac } = require('node:crypto')
-const root = '/home/node/.signalk', name = 'signalk-forecast-dataset-browser'
+const root = process.env.SIGNALK_NODE_CONFIG_DIR, name = 'signalk-forecast-dataset-browser'
+assert.ok(root && path.isAbsolute(root), 'Set SIGNALK_NODE_CONFIG_DIR to the selected server configuration directory')
 const archive = process.argv[2], base = 'http://127.0.0.1:3000'
 assert.equal(process.env.SIGNALK_CONTAINER_ID, 'signalk-sandbox')
 assert.ok(archive && path.isAbsolute(archive) && path.relative(root, archive).startsWith('local-packages/') && !path.relative(root, archive).includes('..'))
@@ -55,7 +56,7 @@ async function main() {
   execFileSync('tar', ['-xzf', archive, '--strip-components=1', '--no-same-owner', '-C', staging])
   const pkg = JSON.parse(fs.readFileSync(path.join(staging, 'package.json')))
   assert.equal(pkg.name, name)
-  assert.equal(pkg.version, '0.1.0')
+  assert.equal(pkg.version, '0.1.0-beta.1')
   assert.ok(!pkg.dependencies || !Object.keys(pkg.dependencies).length)
   assert.ok(fs.existsSync(path.join(staging, 'public/app.js')))
   execFileSync('chown', ['-R', 'node:node', staging])

@@ -5,12 +5,14 @@ const fs = require('node:fs')
 const path = require('node:path')
 const { execFileSync } = require('node:child_process')
 const { randomUUID } = require('node:crypto')
+const { Readable } = require('node:stream')
 const base = 'http://127.0.0.1:3000', name = 'signalk-forecast-dataset-browser'
 const api = '/plugins/signalk-forecast-dataset-provider'
-const credentials = JSON.parse(execFileSync('docker', ['exec', 'signalk-sandbox', 'node', '-e', `
+const credentials = JSON.parse(execFileSync('docker', ['exec', '--env', 'SIGNALK_NODE_CONFIG_DIR', 'signalk-sandbox', 'node', '-e', `
   const fs = require('fs'), c = require('crypto'), assert = require('assert/strict');
   assert.equal(process.env.SIGNALK_CONTAINER_ID, 'signalk-sandbox');
-  const root = '/home/node/.signalk', security = JSON.parse(fs.readFileSync(root+'/security.json'));
+  const root = process.env.SIGNALK_NODE_CONFIG_DIR; assert.ok(root, 'Set SIGNALK_NODE_CONFIG_DIR');
+  const security = JSON.parse(fs.readFileSync(root+'/security.json'));
   const admin = security.users.find(u=>u.type==='admin'); assert.ok(admin);
   const secret = security.secretKey || fs.readFileSync(root+'/security-secret.key','utf8').trim();
   const h = Buffer.from(JSON.stringify({alg:'HS256',typ:'JWT'})).toString('base64url');
@@ -70,15 +72,34 @@ async function main() {
     }
     const fixtureName = 'Vérification browser · ' + randomUUID().slice(0, 8)
     const bytes = Buffer.from(JSON.stringify({ purpose: 'browser verification only' }))
-    let response = await call(api + '/publications', { method: 'POST', json: { kind: 'analysis', format: 'json', producer: 'forecast-browser-verification', metadata: { name: fixtureName, model: 'TEST', description: 'Synthetic browser deletion verification; not a forecast.' }, assets: [{ id: 'manifest', size: bytes.length, mediaType: 'application/json' }] } })
+    let response = await call(api + '/publications', { method: 'POST', json: { kind: 'analysis', format: 'json', producer: 'forecast-browser-verification', metadata: { name: fixtureName, model: 'TEST', description: 'Synthetic browser deletion verification; not a forecast.' }, assets: [{ id: 'manifest', mediaType: 'application/json' }] } })
     assert.equal(response.status, 201)
     const stage = await response.json(); publications.add(stage.id)
-    response = await call(`${api}/publications/${stage.id}/assets/manifest`, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, body: bytes })
+    await page.locator('#refresh').click()
+    const acquisition = page.locator(`[data-publication="${stage.id}"]`)
+    await acquisition.waitFor()
+    assert.ok((await acquisition.textContent()).includes('taille totale inconnue'))
+    let release
+    const gate = new Promise(resolve => { release = resolve })
+    const upload = call(`${api}/publications/${stage.id}/assets/manifest`, { method: 'PUT', headers: { 'Content-Type': 'application/octet-stream' }, duplex: 'half', body: Readable.from((async function* () { yield bytes.subarray(0, 8); await gate; yield bytes.subarray(8) })()) })
+    try {
+      await page.waitForFunction(id => document.querySelector(`[data-publication="${id}"]`)?.textContent.includes('Réception en cours'), stage.id)
+      assert.equal(await acquisition.locator('progress').getAttribute('value'), null)
+      assert.equal(await page.locator('#dataset-count').textContent(), String(initialIds.length))
+      fs.mkdirSync(screenshots, { recursive: true })
+      await page.screenshot({ path: path.join(screenshots, 'acquisition-desktop.png'), fullPage: true })
+      await page.setViewportSize({ width: 390, height: 844 })
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth))
+      await page.screenshot({ path: path.join(screenshots, 'acquisition-mobile.png'), fullPage: true })
+      await page.setViewportSize({ width: 1440, height: 1080 })
+    } finally { release() }
+    response = await upload
     assert.equal(response.status, 201)
+    await page.waitForFunction(id => document.querySelector(`[data-publication="${id}"]`)?.textContent.includes('en attente de publication'), stage.id)
     response = await call(`${api}/publications/${stage.id}/commit`, { method: 'POST' })
     assert.equal(response.status, 201)
     const dataset = await response.json(); datasets.add(dataset.id); publications.delete(stage.id)
-    await page.locator('#refresh').click()
+    // Automatic monitoring reconciles committed content without manual refresh.
     const row = page.locator(`tr[data-id="${dataset.id}"]`)
     await row.waitFor()
     await row.locator('[data-delete]').click()
@@ -100,7 +121,7 @@ async function main() {
     assert.deepEqual(Object.keys(await listing()).sort(), initialIds)
     await page.waitForFunction(count => document.getElementById('dataset-count').textContent === String(count), initialIds.length)
     await page.waitForFunction(() => document.getElementById('detail-panel').getAttribute('aria-busy') === 'false')
-    await page.waitForFunction(() => getComputedStyle(document.getElementById('toast')).opacity === '0')
+    await page.waitForFunction(() => !document.getElementById('toast').classList.contains('show') && getComputedStyle(document.getElementById('toast')).opacity === '0')
     fs.mkdirSync(screenshots, { recursive: true })
     await page.screenshot({ path: path.join(screenshots, 'catalogue-desktop.png'), fullPage: true })
     await page.setViewportSize({ width: 390, height: 844 })
@@ -114,10 +135,12 @@ async function main() {
     await readonlyPage.waitForFunction(count => document.getElementById('dataset-count').textContent === String(count), initialIds.length)
     await readonlyPage.waitForFunction(() => document.getElementById('access-level').textContent === 'Lecture seule')
     for (const button of await readonlyPage.locator('[data-delete]').all()) assert.equal(await button.isDisabled(), true)
+    await readonlyPage.waitForFunction(() => document.getElementById('publications-note').textContent.includes('compte autorisé en écriture'))
+    assert.equal(await readonlyPage.locator('[data-publication]').count(), 0)
     assert.deepEqual(errors, [])
-    const preserved = JSON.parse(execFileSync('docker', ['exec', 'signalk-sandbox', 'node', '-e', `
+    const preserved = JSON.parse(execFileSync('docker', ['exec', '--env', 'SIGNALK_NODE_CONFIG_DIR', 'signalk-sandbox', 'node', '-e', `
       const fs=require('fs'),path=require('path'),c=require('crypto'),assert=require('assert/strict');
-      const root='/home/node/.signalk', name='${name}';
+      const root=process.env.SIGNALK_NODE_CONFIG_DIR, name='${name}'; if (!root) throw new Error('Set SIGNALK_NODE_CONFIG_DIR');
       const marker=JSON.parse(fs.readFileSync(root+'/local-packages/forecast-browser-install-backup.json'));
       const baseline=JSON.parse(fs.readFileSync(marker.backup+'/baseline.json'));
       for(const [file,hash] of Object.entries(baseline.hashes)) assert.equal(c.createHash('sha256').update(fs.readFileSync(path.join(root,'plugin-config-data',file))).digest('hex'),hash,file);
@@ -126,7 +149,7 @@ async function main() {
       for(const [dependency,value] of Object.entries(before.dependencies)) if(dependency!==name) assert.equal(after.dependencies[dependency],value,dependency);
       console.log(JSON.stringify({configurations:Object.keys(baseline.hashes).length,dependencies:Object.keys(before.dependencies).filter(dependency=>dependency!==name).length}));
     `], { encoding: 'utf8' }))
-    console.log(JSON.stringify({ result: 'PASS', webapp: name, realDatasetsPreserved: initialIds.length, syntheticDatasetDeleted: dataset.id, cancelledDeletion: 'no effect', readonlyControls: 'disabled', desktopAndMobile: 'verified', browserErrors: errors.length, preserved }))
+    console.log(JSON.stringify({ result: 'PASS', webapp: name, realDatasetsPreserved: initialIds.length, streamingProgress: 'unknown size, active reception, ready before commit, automatic catalogue refresh', syntheticDatasetDeleted: dataset.id, cancelledDeletion: 'no effect', readonlyControls: 'disabled; staging hidden', desktopAndMobile: 'verified', browserErrors: errors.length, preserved }))
   } finally { await browser.close() }
 }
 main().catch(error => { console.error(error.message); process.exitCode = 1 }).finally(async () => {

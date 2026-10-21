@@ -1,21 +1,26 @@
 {
   "name": "signalk-forecast-dataset-browser",
-  "version": "0.1.0",
+  "version": "0.1.0-beta.1",
   "description": "Signal K webapp to browse forecast datasets, inspect metadata and delete datasets",
   "main": "index.cjs",
   "type": "module",
   "scripts": {
-    "check": "node --check index.cjs && node --check public/app.js && node --check public/catalogue.js",
-    "test": "npm run check && node --test test/catalogue.test.js",
-    "test:browser": "playwright test"
+    "check:syntax": "node --check index.cjs && node --check public/app.js && node --check public/catalogue.js",
+    "check": "npm test",
+    "test": "npm run check:syntax && node test/catalogue.test.js",
+    "test:browser": "playwright test",
+    "prepublishOnly": "npm run check"
   },
   "files": [
     "index.cjs",
+    "icon.svg",
     "public",
     "README.md",
     "CHANGELOG.md",
     "LICENSE",
-    "docs/sandbox-verification.md"
+    "docs/sandbox-verification.md",
+    "docs/screenshots/",
+    "RELEASING.md"
   ],
   "keywords": [
     "signalk-node-server-plugin",
@@ -37,9 +42,25 @@
     "appIcon": "./icon.svg",
     "requires": [
       "signalk-forecast-dataset-provider"
+    ],
+    "screenshots": [
+      "./docs/screenshots/catalogue-desktop.png",
+      "./docs/screenshots/acquisition-desktop.png"
     ]
   },
   "devDependencies": {
     "@playwright/test": "^1.64.1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/macjl/signalk-forecast-dataset-browser.git"
+  },
+  "homepage": "https://github.com/macjl/signalk-forecast-dataset-browser#readme",
+  "bugs": {
+    "url": "https://github.com/macjl/signalk-forecast-dataset-browser/issues"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org",
+    "access": "public"
   }
 }

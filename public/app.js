@@ -4,7 +4,7 @@ import { createClient, serverPrefix, canDelete, filterDatasets, formatBytes, tit
 const prefix = serverPrefix(location.pathname)
 const client = createClient({ prefix })
 const $ = id => document.getElementById(id)
-const state = { items: [], session: null, selectedId: null, detail: null, generation: 0, loadController: null, detailController: null, deleting: false, preparingDelete: false, pending: null, lastUpdate: null, loaded: false }
+const state = { items: [], publications: [], session: null, selectedId: null, detail: null, generation: 0, loadController: null, detailController: null, deleting: false, preparingDelete: false, pending: null, lastUpdate: null, loaded: false }
 const dateFormat = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'short', timeStyle: 'short', timeZone: 'UTC' })
 const localTime = new Intl.DateTimeFormat('fr-FR', { timeStyle: 'medium' })
 const kindNames = { forecast: 'Prévision', analysis: 'Analyse', harmonic: 'Harmonique' }
@@ -78,6 +78,62 @@ function renderList() {
   $('empty-title').textContent = filtered ? 'Aucun dataset ne correspond' : 'Le catalogue est vide'
   $('empty-description').textContent = filtered ? 'Essayez un autre nom, format ou état d’inventaire.' : 'Les prochaines acquisitions publiées apparaîtront ici.'
   permissions()
+}
+let publicationTimer, publicationController
+function stopPublicationMonitoring() {
+  clearTimeout(publicationTimer)
+  publicationController?.abort()
+}
+function renderPublications() {
+  const labels = { pending: 'En attente / à reprendre', receiving: 'Réception en cours', ready: 'Reçu · en attente de publication' }
+  $('publication-count').hidden = !state.publications.length
+  $('publication-count').textContent = plural(state.publications.length, 'acquisition')
+  $('publication-rows').replaceChildren(...state.publications.map(publication => {
+    const { declaration, progress } = publication
+    const known = progress.totalBytes !== null
+    const card = node('article', { class: 'publication-card', 'data-publication': publication.id },
+      node('strong', {}, title({ ...declaration.metadata, id: publication.id })),
+      node('span', { class: 'badge unverified' }, labels[publication.state]),
+      node('p', { class: 'small muted' }, `${declaration.producer} · ${(declaration.format || '').toUpperCase()} · ${progress.assetsCompleted}/${progress.assetsTotal} fichiers terminés`),
+      node('p', { class: 'small publication-bytes' }, `${formatBytes(progress.bytesReceived)} reçus${known ? ` sur ${formatBytes(progress.totalBytes)}` : ' · taille totale inconnue'}`),
+      node('progress', { max: known ? progress.totalBytes || 1 : undefined, value: known ? progress.bytesReceived : undefined, 'aria-label': 'Progression de la réception' }),
+      node('code', { class: 'small muted' }, publication.id))
+    return card
+  }))
+}
+async function monitorPublications() {
+  stopPublicationMonitoring()
+  const controller = new AbortController(); publicationController = controller
+  if (!canDelete(state.session)) {
+    state.publications = []; renderPublications()
+    $('publications-note').textContent = 'Le suivi des acquisitions nécessite un compte autorisé en écriture.'
+    return
+  }
+  async function refresh() {
+    let repeat = true
+    try {
+      if (document.hidden) return
+      const previous = state.publications
+      const current = await client.publications(controller.signal)
+      if (controller.signal.aborted) return
+      state.publications = current; renderPublications()
+      $('publications-note').textContent = current.length ? 'Suivi automatique. Ces contenus ne sont pas encore utilisables par les consommateurs.' : 'Aucune acquisition en cours. Suivi automatique actif.'
+      if (previous.some(p => !current.some(c => c.id === p.id))) {
+        // Disappearance may be commit or abort: reconcile the complete catalogue.
+        if (!state.deleting && !$('delete-dialog').open) { await load(); return }
+      }
+    } catch (error) {
+      if (controller.signal.aborted) return
+      if ([401, 403, 404].includes(error.status)) {
+        state.publications = []; renderPublications(); repeat = false
+      }
+      if ([401, 403].includes(error.status)) { state.session = null; permissions() }
+      $('publications-note').textContent = error.status === 404 ? 'Le suivi nécessite Forecast Dataset Provider 0.1.1 ou plus récent.' : `Suivi indisponible : ${error.message} Les éventuelles valeurs affichées ne sont plus à jour.`
+    } finally {
+      if (repeat && !controller.signal.aborted) publicationTimer = setTimeout(refresh, state.publications.length ? 2000 : 5000)
+    }
+  }
+  await refresh()
 }
 function metadata(entries) {
   const list = node('dl', { class: 'metadata' })
@@ -164,6 +220,7 @@ async function selectDataset(id, focus = false) {
 }
 async function load() {
   if (state.deleting) return
+  stopPublicationMonitoring()
   state.loadController?.abort()
   const controller = new AbortController(); state.loadController = controller
   const generation = ++state.generation
@@ -178,6 +235,8 @@ async function load() {
     state.items = results[1].value; state.loaded = true; state.lastUpdate = new Date()
     $('last-update').textContent = `Mis à jour à ${localTime.format(state.lastUpdate)}`
     summary(); renderList(); permissions(); setConnection('Catalogue connecté', 'ready')
+    await monitorPublications()
+    if (controller.signal.aborted) return
     if (results[0].status === 'rejected') notice('Les droits de la session n’ont pas pu être vérifiés. La consultation reste disponible.')
     const selected = state.items.some(d => d.id === state.selectedId) ? state.selectedId : state.items[0]?.id
     if (selected) await selectDataset(selected)
@@ -238,4 +297,5 @@ $('clear-filters').addEventListener('click', () => { $('search').value = ''; $('
 $('delete-cancel').addEventListener('click', closeDelete)
 $('delete-form').addEventListener('submit', confirmDelete)
 $('delete-dialog').addEventListener('cancel', event => { if (state.deleting) event.preventDefault(); else { event.preventDefault(); closeDelete() } })
+addEventListener('pagehide', stopPublicationMonitoring)
 load()

@@ -8,13 +8,14 @@ const fixtures = () => [
 ].map(d => ({ ...d, version, contractVersion: '0.1', state: 'complete', metadataRevision: 1, declared: { model: d.model }, requested: { source: d.name, hours: 48 }, provenance: { channel: 'internet' }, assets: Array.from({ length: d.assetCount }, (_, i) => ({ id: `part-${i}`, size: 512, mediaType: 'application/octet-stream', sha256: 'b'.repeat(64) })) }))
 async function setup(page, { role = 'admin' } = {}) {
   const records = new Map(fixtures().map(d => [d.id, d]))
-  const state = { deletes: [], deleteStatus: 204, changed: false, listError: 0 }
+  const state = { deletes: [], deleteStatus: 204, changed: false, listError: 0, publications: {}, publicationStatus: 200, publicationRequests: 0 }
   await page.route('**/skServer/loginStatus', route => route.fulfill({ json: { status: 'loggedIn', authenticationRequired: true, userLevel: role, username: 'sandbox' } }))
   await page.route('**/plugins/signalk-forecast-dataset-provider/**', route => {
     const request = route.request(), url = new URL(request.url())
     const json = (data, status = 200) => route.fulfill({ status, json: data })
     if (url.pathname === api + '/status') return json({ contractVersion: '0.1', datasets: records.size })
     if (url.pathname === api + '/datasets') return state.listError ? json({ message: 'Unavailable' }, state.listError) : json(Object.fromEntries(records))
+    if (url.pathname === api + '/publications') { state.publicationRequests++; return json(state.publications, state.publicationStatus) }
     const id = url.pathname.slice((api + '/datasets/').length).split('/')[0]
     if (!records.has(id)) return json({ code: 'DATASET_NOT_FOUND' }, 404)
     if (request.method() === 'DELETE') {
@@ -77,6 +78,45 @@ test('readonly session can inspect metadata but cannot delete', async ({ page })
   await page.getByRole('button', { name: 'AROME · Golfe du Lion', exact: true }).click()
   await expect(page.locator('#detail-content')).toContainText('weather-receiver')
   expect(state.deletes).toEqual([])
+  expect(state.publicationRequests).toBe(0)
+  await expect(page.locator('#publications-note')).toContainText('compte autorisé en écriture')
+})
+
+test('live acquisition stays separate, uses indeterminate progress and reconciles after commit', async ({ page }) => {
+  const { state, records, errors } = await setup(page)
+  const id = '44444444-4444-4444-8444-444444444444'
+  const datasetId = '55555555-5555-4555-8555-555555555555'
+  state.publications = { [id]: { id, datasetId, state: 'receiving', declaration: { producer: 'receiver', format: 'grib2', metadata: { name: '<img src=x onerror="window.injected=true">' } }, progress: { bytesReceived: 1024, totalBytes: null, assetsCompleted: 0, assetsTotal: 2 } } }
+  await page.locator('#refresh').click()
+  const card = page.locator(`[data-publication="${id}"]`)
+  await expect(card).toContainText('Réception en cours')
+  await expect(card).toContainText('taille totale inconnue')
+  await expect(card.locator('progress')).not.toHaveAttribute('value')
+  await expect(card.locator('img')).toHaveCount(0)
+  await expect(page.locator('#dataset-count')).toHaveText('3')
+  state.publications[id].state = 'ready'
+  state.publications[id].progress = { bytesReceived: 2048, totalBytes: 2048, assetsCompleted: 2, assetsTotal: 2 }
+  await expect(card).toContainText('en attente de publication')
+  await expect(card.locator('progress')).toHaveAttribute('value', '2048')
+  await expect(page.locator('#dataset-count')).toHaveText('3')
+  records.set(datasetId, { ...fixtures()[0], id: datasetId, name: 'Nouvelle acquisition publiée' })
+  state.publications = {}
+  await expect(page.locator('#dataset-count')).toHaveText('4')
+  await expect(card).toHaveCount(0)
+  expect(errors).toEqual([])
+})
+
+test('older providers and expired monitoring permissions leave published consultation usable', async ({ page }) => {
+  const { state } = await setup(page)
+  state.publicationStatus = 404
+  await page.locator('#refresh').click()
+  await expect(page.locator('#publications-note')).toContainText('0.1.1')
+  await expect(page.locator('#dataset-count')).toHaveText('3')
+  state.publicationStatus = 403
+  await page.locator('#refresh').click()
+  await expect(page.locator('#publications-note')).toContainText('droits nécessaires')
+  await expect(page.locator('[data-publication]')).toHaveCount(0)
+  await expect(page.locator('#access-level')).toHaveText('Lecture seule')
 })
 
 test('busy conflict keeps the dataset and the confirmation open for retry', async ({ page }) => {

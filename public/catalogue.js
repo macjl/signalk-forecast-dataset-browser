@@ -58,6 +58,18 @@ export function createClient({ prefix = '', fetchImpl = globalThis.fetch } = {})
   }
   return {
     session: signal => request('/skServer/loginStatus', { signal }),
+    async publications(signal) {
+      const entries = await request(API + '/publications', { signal })
+      if (!entries || typeof entries !== 'object' || Array.isArray(entries)) throw new Error('Réponse de publications invalide.')
+      return Object.entries(entries).map(([id, publication]) => {
+        if (!ID.test(id) || publication?.id !== id || !ID.test(publication.datasetId)
+          || !['pending', 'receiving', 'ready'].includes(publication.state)
+          || !publication.declaration || !publication.progress
+          || !Number.isSafeInteger(publication.progress.bytesReceived) || publication.progress.bytesReceived < 0
+          || !(publication.progress.totalBytes === null || (Number.isSafeInteger(publication.progress.totalBytes) && publication.progress.totalBytes >= publication.progress.bytesReceived))) throw new Error('Une publication possède un suivi invalide.')
+        return publication
+      })
+    },
     async list({ signal, onProgress = () => {} } = {}) {
       const status = await request(API + '/status', { signal })
       if (status.contractVersion !== '0.1') throw new Error('Cette webapp nécessite le contrat 0.1 de Forecast Dataset Provider.')

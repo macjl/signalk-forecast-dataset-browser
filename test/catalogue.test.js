@@ -6,6 +6,19 @@ const id = n => `${String(n).padStart(8, '0')}-1111-4111-8111-111111111111`
 const dataset = n => ({ id: id(n), name: `Dataset ${n}`, version: 'a'.repeat(64), metadataRevision: 1, model: 'GFS', format: 'grib2', producer: 'downloader', inventory: { status: 'unverified' } })
 const json = (value, status = 200) => new Response(JSON.stringify(value), { status, headers: { 'Content-Type': 'application/json' } })
 
+test('publication monitoring uses a separate authenticated endpoint and preserves unknown totals', async () => {
+  const publication = { id: id(8), datasetId: id(9), state: 'receiving', declaration: { producer: 'receiver' }, progress: { bytesReceived: 123, totalBytes: null } }
+  const client = createClient({ prefix: '/proxy', fetchImpl: async (url, options) => {
+    assert.equal(url, '/proxy' + API + '/publications')
+    assert.equal(options.credentials, 'same-origin')
+    assert.equal(options.cache, 'no-store')
+    return json({ [publication.id]: publication })
+  } })
+  assert.deepEqual(await client.publications(), [publication])
+  const invalid = createClient({ fetchImpl: async () => json({ [publication.id]: { ...publication, progress: { bytesReceived: 123, totalBytes: 12 } } }) })
+  await assert.rejects(invalid.publications(), /suivi invalide/)
+})
+
 test('lists all pages without filtering out other forecast formats or kinds', async () => {
   const requests = []
   const client = createClient({ fetchImpl: async (url, options) => {

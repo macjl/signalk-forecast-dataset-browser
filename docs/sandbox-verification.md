@@ -1,5 +1,19 @@
 # Sandbox verification
 
+## npm publication preparation
+
+The first registry version is prepared as 0.1.0-beta.1. The recorded 0.1.0/0.1.1
+sandbox checks below describe local snapshots; the installed sandbox has not
+been changed by publication preparation. The package now declares its GitHub
+metadata, App Store screenshots and the standard Signal K/npm workflows.
+See [publishing instructions](../RELEASING.md).
+
+For the sandbox helpers, explicitly set `SIGNALK_NODE_CONFIG_DIR` to the selected
+server's configuration directory. Pass it into Docker as well, for example
+`docker exec -e SIGNALK_NODE_CONFIG_DIR=/home/node/.signalk ...`. The host-side
+verification helper forwards this variable into its Docker commands. This makes
+the helper source portable without assuming a particular user's home directory.
+
 Target: the existing `signalk-sandbox` container, Signal K 2.34.0 with Forecast
 Dataset Provider 0.1.0. Browser package: `signalk-forecast-dataset-browser` 0.1.0.
 
@@ -65,3 +79,33 @@ plugin configurations and 43 other root dependencies; the subsequent package
 update also preserved the new browser configuration. Installed frontend file
 hashes match the source files. Desktop and mobile screenshots are recorded under
 `docs/screenshots/` after test-data cleanup.
+
+## Streaming monitoring 0.1.1 (2026-10-21)
+
+Browser and Provider 0.1.1 were updated in the same sandbox with configuration and existing datasets preserved. The new browser backup is `local-packages/forecast-browser-before-install-2026-10-21T15-44-23-664Z`. No runtime dependency tree was re-resolved.
+
+Validation passed: **12 client tests, 12 UI tests**, plus the actual installed browser. The live UI displayed an unknown-size synthetic JSON acquisition as pending, receiving and ready before explicit commit, then automatically refreshed the complete catalogue after commit. Unknown totals stayed indeterminate. Readonly users retained published-data consultation and could not access staging. Desktop/mobile layouts had no horizontal overflow or page JavaScript errors.
+
+The 2 pre-existing real datasets, all 46 plugin configurations and 43 unrelated root dependencies remained unchanged. Only the synthetic test acquisition was published/deleted; its staging was cleaned up. Source screenshots now include `acquisition-desktop.png` and `acquisition-mobile.png` during the test stream, and refreshed catalogue screenshots after cleanup. Chromium used the already extracted libraries at `/tmp/forecast-browser-libs/root/usr/lib/aarch64-linux-gnu`; no host system package changes were needed.
+
+This adds browser monitoring and provider support, not a refactor of the downloader's acquisition pipeline. The provider's stream progress is volatile and the explicit producer commit remains necessary.
+
+## npm release preparation (2026-10-21)
+
+The first public package is prepared as **0.1.0-beta.1**. Local checks passed:
+
+- All 12 client tests on Node 20.19.2 and Node 24, plus syntax checks.
+- All 12 Chromium interface tests, including acquisition monitoring.
+- The official Signal K workflow's package metadata validation.
+- Workflow YAML parsing, Bash syntax checks and simulated release tag/channel
+  checks for alpha, beta, rc, next and stable releases.
+- `npm publish --dry-run --tag beta`, including the prepublish checks.
+- Installation of the actual npm archive with `--ignore-scripts --omit=dev`,
+  followed by plugin start/stop and verification of declared icons/screenshots.
+
+The archive contains 17 files and excludes tests, deployment helpers, workflows,
+node_modules and credentials. The Node 24 check used an isolated temporary
+directory in the existing container; no installed plugin or configuration was
+changed. No registry write, GitHub release or sandbox redeployment was performed.
+Hosted CI, real-server integration and npm OIDC publishing remain to be verified
+on GitHub after the setup described in [RELEASING.md](../RELEASING.md).
