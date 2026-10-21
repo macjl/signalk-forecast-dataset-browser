@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0a2538">
+  <title>Forecast Dataset Browser · Signal K</title>
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./"><img src="icon.svg" alt="" width="40" height="40"><span>Signal K<strong>Forecast Dataset Browser</strong></span></a>
+    <div class="connection"><span id="connection-state" class="connection-state">Connexion au catalogue…</span><a id="login-link" class="login-link" href="/admin/#/login">Se connecter</a></div>
+  </header>
+  <main class="shell">
+    <section class="page-heading" aria-labelledby="page-title">
+      <div><p class="eyebrow">DONNÉES MÉTÉO</p><h1 id="page-title">Catalogue des prévisions</h1><p class="subtitle">Les données publiées, leurs métadonnées et leurs fichiers d’origine.</p></div>
+      <div class="refresh-group"><button id="refresh" class="button secondary" type="button"><span aria-hidden="true">↻</span> Actualiser</button><span id="last-update" class="muted small">Aucune lecture pour le moment</span></div>
+    </section>
+    <div id="notice" class="notice" role="alert" hidden></div>
+    <section class="stats" aria-label="Résumé du catalogue">
+      <div class="stat"><span class="stat-label">Jeux de données</span><strong id="dataset-count">—</strong><span class="muted small">Toutes les acquisitions publiées</span></div>
+      <div class="stat"><span class="stat-label">Volume publié</span><strong id="total-bytes">—</strong><span id="volume-note" class="muted small">Fichiers d’origine dans le catalogue</span></div>
+      <div class="stat"><span class="stat-label">Inventaires vérifiés</span><strong id="verified-count">—</strong><span class="muted small">Avec un inventaire fourni par un indexeur</span></div>
+    </section>
+    <section class="workspace" aria-label="Explorateur du catalogue">
+      <div class="collection panel">
+        <div class="collection-heading"><div><h2>Jeux de données</h2><p id="result-count" class="muted small" aria-live="polite">Chargement du catalogue…</p></div><span id="access-level" class="access-level">Vérification des droits…</span></div>
+        <div class="filters">
+          <label class="search"><span class="sr-only">Rechercher</span><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/></svg><input id="search" type="search" autocomplete="off" placeholder="Nom, modèle, identifiant, producteur…"></label>
+          <label class="select-label"><span class="sr-only">Format</span><select id="format"><option value="">Tous les formats</option></select></label>
+          <label class="select-label"><span class="sr-only">Inventaire</span><select id="inventory"><option value="">Tous les inventaires</option><option value="verified">Vérifié</option><option value="unverified">Non vérifié</option></select></label>
+        </div>
+        <div class="table-wrap"><table class="datasets"><caption class="sr-only">Datasets du catalogue. Sélectionnez un nom pour afficher les métadonnées.</caption><thead><tr><th>Dataset</th><th class="cycle-column">Cycle du modèle <span class="muted">UTC</span></th><th>Fichiers / taille</th><th class="inventory-column">Inventaire</th><th><span class="sr-only">Actions</span></th></tr></thead><tbody id="dataset-rows"></tbody></table></div>
+        <div id="list-empty" class="empty" hidden><div class="empty-symbol" aria-hidden="true">⌑</div><h3 id="empty-title">Le catalogue est vide</h3><p id="empty-description">Les prochaines acquisitions publiées apparaîtront ici.</p><button id="clear-filters" class="button secondary" type="button" hidden>Effacer les filtres</button></div>
+        <div class="collection-footer"><span class="dot"></span><span>Contenus publiés dans Forecast Dataset Provider</span></div>
+      </div>
+      <aside id="detail-panel" class="detail panel" aria-labelledby="detail-title" aria-busy="false">
+        <div class="detail-topline"><p class="eyebrow">MÉTADONNÉES</p><span id="detail-format" class="format-tag" hidden></span></div>
+        <h2 id="detail-title" tabindex="-1">Choisissez un dataset</h2>
+        <div id="detail-content"><p class="muted detail-placeholder">Sélectionnez une ligne pour consulter les métadonnées, les fichiers et l’inventaire disponibles.</p></div>
+      </aside>
+    </section>
+    <footer class="page-footer"><span>Forecast Dataset Browser</span><span>Les métadonnées déclarées et les inventaires vérifiés sont présentés séparément.</span></footer>
+  </main>
+  <dialog id="delete-dialog" aria-labelledby="delete-title" aria-describedby="delete-description">
+    <form id="delete-form">
+      <div class="delete-icon" aria-hidden="true">!</div><p class="eyebrow">SUPPRESSION DU DATASET</p><h2 id="delete-title">Supprimer ce jeu de données ?</h2>
+      <p id="delete-description">Le dataset et toutes ses versions seront supprimés du catalogue. Cette action ne peut pas être annulée.</p>
+      <div class="delete-target"><strong id="delete-name"></strong><code id="delete-id"></code><span id="delete-summary" class="muted small"></span></div>
+      <p id="delete-error" class="dialog-error" role="alert" hidden></p>
+      <div class="dialog-actions"><button id="delete-cancel" class="button secondary" type="button" autofocus>Annuler</button><button id="delete-confirm" class="button danger" type="submit">Supprimer le dataset</button></div>
+    </form>
+  </dialog>
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

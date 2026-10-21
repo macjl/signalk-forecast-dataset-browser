@@ -1,0 +1,45 @@
+{
+  "name": "signalk-forecast-dataset-browser",
+  "version": "0.1.0",
+  "description": "Signal K webapp to browse forecast datasets, inspect metadata and delete datasets",
+  "main": "index.cjs",
+  "type": "module",
+  "scripts": {
+    "check": "node --check index.cjs && node --check public/app.js && node --check public/catalogue.js",
+    "test": "npm run check && node --test test/catalogue.test.js",
+    "test:browser": "playwright test"
+  },
+  "files": [
+    "index.cjs",
+    "public",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "docs/sandbox-verification.md"
+  ],
+  "keywords": [
+    "signalk-node-server-plugin",
+    "signalk-webapp",
+    "signalk-category-weather",
+    "signalk",
+    "forecast",
+    "datasets",
+    "catalogue"
+  ],
+  "author": "Jean-Laurent Girod (@macjl)",
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "signalk-plugin-enabled-by-default": true,
+  "signalk": {
+    "displayName": "Forecast Dataset Browser",
+    "appIcon": "./icon.svg",
+    "requires": [
+      "signalk-forecast-dataset-provider"
+    ]
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.64.1"
+  }
+}
