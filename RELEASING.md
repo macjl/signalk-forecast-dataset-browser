@@ -39,7 +39,7 @@ test "$(npm whoami --registry=https://registry.npmjs.org)" = macjl
 browser_bootstrap_dir="$(mktemp -d)"
 cd "$browser_bootstrap_dir"
 npm init -y
-npm pkg set name=signalk-forecast-dataset-browser version=0.0.0-stage \
+npm pkg set name=signalk-forecast-dataset-browser version=0.0.0-bootstrap.1 \
   description="Empty bootstrap package for Signal K Forecast Dataset Browser" \
   license=Apache-2.0 \
   repository.type=git \
