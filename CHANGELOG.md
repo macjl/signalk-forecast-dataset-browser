@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.0 — 2026-10-30
+
+- First stable release of catalogue browsing, original downloads, confirmed
+  deletion and live acquisition monitoring, following the public beta.
+- Include the coordinated forecast-plugin upgrade guide in the npm package.
+- Preserve the provider's HTTP contract 0.1 and existing session permissions.
+
 ## 0.1.0-beta.1 — 2026-10-21
 
 - Prepare the first public beta with catalogue browsing, confirmed deletion and
@@ -8,13 +15,13 @@
   publishing through GitHub Actions with OIDC/provenance and prerelease tags.
 - Supply repository metadata, App Store screenshots and publication instructions.
 
-## 0.1.1 — 2026-10-21
+## Development snapshot 0.1.1 — 2026-10-21 (not published)
 
 - Show unfinished acquisitions separately through the provider's writer-only publication API, with live byte/file progress and honest unknown totals.
 - Refresh the complete catalogue after a monitored publication commits or is aborted; keep readonly consultation and older-provider compatibility.
 - Cover monitoring, permissions, stale/error responses, indeterminate progress and commit transitions in client/browser tests.
 
-## 0.1.0 — 2026-10-21
+## Development snapshot 0.1.0 — 2026-10-21 (not published)
 
 - Add a standalone Signal K webapp to browse all catalogue datasets.
 - Show summaries, detailed metadata, original files and verified inventories.

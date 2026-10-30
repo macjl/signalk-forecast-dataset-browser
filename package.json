@@ -1,6 +1,6 @@
 {
   "name": "signalk-forecast-dataset-browser",
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0",
   "description": "Signal K webapp to browse forecast datasets, inspect metadata and delete datasets",
   "main": "index.cjs",
   "type": "module",
@@ -19,6 +19,7 @@
     "CHANGELOG.md",
     "LICENSE",
     "docs/sandbox-verification.md",
+    "docs/upgrading.md",
     "docs/screenshots/",
     "RELEASING.md"
   ],

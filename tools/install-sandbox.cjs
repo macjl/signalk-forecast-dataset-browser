@@ -56,7 +56,7 @@ async function main() {
   execFileSync('tar', ['-xzf', archive, '--strip-components=1', '--no-same-owner', '-C', staging])
   const pkg = JSON.parse(fs.readFileSync(path.join(staging, 'package.json')))
   assert.equal(pkg.name, name)
-  assert.equal(pkg.version, '0.1.0-beta.1')
+  assert.equal(pkg.version, '0.1.0')
   assert.ok(!pkg.dependencies || !Object.keys(pkg.dependencies).length)
   assert.ok(fs.existsSync(path.join(staging, 'public/app.js')))
   execFileSync('chown', ['-R', 'node:node', staging])

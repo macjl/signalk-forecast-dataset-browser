@@ -1,8 +1,9 @@
 # npm publishing
 
-The first public browser release is prepared as **0.1.0-beta.1** under npm's
-`beta` tag. Versions 0.1.0 and 0.1.1 were local sandbox snapshots; their features
-are included in this beta. The provider's HTTP contract remains 0.1.
+The repository, package and trusted publisher already exist. Release **0.1.0**
+is the first stable version and publishes to `latest`; `0.1.0-beta.1` remains
+the previous beta. Earlier 0.1.0/0.1.1 entries describe local sandbox snapshots.
+The provider's HTTP contract remains 0.1. See [the upgrade guide](docs/upgrading.md).
 
 This follows the other `macjl` Signal K plugins: [the official reusable Signal K
 CI](https://github.com/SignalK/signalk-server/blob/master/.github/workflows/plugin-ci.yml), followed by npm trusted publishing (OIDC/provenance) from `publish.yml`.
@@ -10,10 +11,9 @@ No `NPM_TOKEN` secret is used. A normal code push runs CI and does not publish.
 
 ## One-time repository and npm setup
 
-At preparation time this checkout has no `origin` remote. The intended public
-repository is `macjl/signalk-forecast-dataset-browser`. Create it, commit the
-reviewed browser and workflow files, configure `origin` and push the release
-content to `main`. For a new empty repository, for example:
+The following steps are historical bootstrap instructions, only for a new empty
+repository/package. Do not repeat them for this plugin. The public repository is
+`macjl/signalk-forecast-dataset-browser`. For a new empty repository, for example:
 
 ```sh
 gh repo create macjl/signalk-forecast-dataset-browser --public --source=. --remote=origin
@@ -28,8 +28,8 @@ be available from npm as a usable plugin for a meaningful complete-chain test.
 The separate Chromium job tests the catalogue UI and acquisition monitoring
 against local HTTP fixtures. No sandbox credentials are used by hosted CI.
 
-The public npm lookup returned E404 during preparation. A package must exist
-before its trusted publisher can be configured. Bootstrap an **empty** placeholder
+Before the first beta, the public npm lookup returned E404. A package must exist
+before its trusted publisher can be configured. For a new package, bootstrap an **empty** placeholder
 outside this checkout, following the pattern used for the other new plugins.
 These commands perform the initial public registry write:
 
@@ -99,7 +99,7 @@ webapp files without compilation. The sandbox helpers are not npm installers.
 ## Release through GitHub
 
 Keep package.json, package-lock.json and CHANGELOG.md aligned with the version.
-The initial tag is **v0.1.0-beta.1**. Push that tag and publish a GitHub prerelease
+The first stable tag is **v0.1.0**. Push that tag and publish a GitHub release
 from it. Publishing the Release starts `.github/workflows/publish.yml`. A tag push
 alone does not publish. Manual workflow dispatch also publishes the version of
 the selected ref; it is not a dry run.
@@ -109,8 +109,8 @@ archive and checks the release tag against package.json. It requires an existing
 npm package and skips a version already published. It uses OIDC/provenance and
 routes prerelease versions to `alpha`, `beta`, `rc` or `next`; stable versions go
 to `latest`. A GitHub prerelease with a stable package version is rejected.
-For this first beta, `latest` is not promoted to the browser release.
+This stable release updates `latest`.
 
-After the workflow succeeds, verify the version, `beta` tag, archive files and
+After the workflow succeeds, verify the version, `latest` tag, archive files and
 provenance on npm. OIDC authentication and the hosted platform matrix can only
 be confirmed by their actual GitHub runs; local dry runs do not establish them.

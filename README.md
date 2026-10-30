@@ -8,6 +8,9 @@ Open **Webapps → Forecast Dataset Browser**, or
 `/signalk-forecast-dataset-browser/`. The interface is in French, works on desktop
 and mobile, and requires no internet connection or external frontend assets.
 
+Stable release: **0.1.0**, with Forecast Dataset Provider **0.1.0**. See the
+[coordinated upgrade guide](docs/upgrading.md) when updating the full GRIB chain.
+
 ## Features
 
 - Separate acquisition monitoring for readwrite/admin sessions: pending, receiving and awaiting-commit publications, file counts and live received bytes. An unknown total uses indeterminate progress, not a fabricated percentage. The complete catalogue refreshes when a monitored publication disappears (commit or abort).
@@ -58,22 +61,21 @@ Consumers update when they next refresh their catalogues.
 ## Installation
 
 Requires Signal K 2.34+ within 2.x and enabled
-`signalk-forecast-dataset-provider` 0.1.x (0.1.1+ for acquisition monitoring; 0.1.0 remains browsable with a feature-unavailable notice). Node 20.19+ is sufficient for this
+`signalk-forecast-dataset-provider` 0.1.0 or later, including acquisition monitoring. Node 20.19+ is sufficient for this
 webapp. No runtime npm dependencies or build step are required.
 
 ```sh
 npm pack
 # Install the archive in your Signal K configuration directory and restart.
-npm install /path/to/signalk-forecast-dataset-browser-0.1.0-beta.1.tgz
+npm install /path/to/signalk-forecast-dataset-browser-0.1.0.tgz
 ```
 
 The plugin registers its static `public/` directory as a Signal K webapp and has
 no configuration settings. It only makes same-origin requests to the existing
 catalogue and login-status APIs. Reverse-proxy path prefixes are preserved.
 
-The first registry release is prepared as **0.1.0-beta.1**. Versions 0.1.0 and
-0.1.1 refer to local sandbox snapshots. Once published, install this beta from
-Signal K's configuration directory with `npm install signalk-forecast-dataset-browser@beta`.
+Install the stable release from Signal K's App Store, or from the server's
+configuration directory with `npm install signalk-forecast-dataset-browser@latest`.
 See [npm publishing](RELEASING.md) for repository setup, trusted publishing and
 GitHub Release instructions.
 
